@@ -13,6 +13,7 @@ import {
 } from '@viastud/utils'
 import { DateTime } from 'luxon'
 import Stripe from 'stripe'
+import twilio from 'twilio'
 import { z } from 'zod'
 
 import Invoice from '#models/invoice'
@@ -38,16 +39,20 @@ import { AdonisEmailValidationRepository } from '../infrastructure/adonis_email_
 import { AdonisModuleToStudentRepository } from '../infrastructure/adonis_module_to_student_repository.js'
 import { AdonisPromotionalCodeRepository } from '../infrastructure/adonis_promotional_code_repository.js'
 import { AdonisReservationRepository } from '../infrastructure/adonis_reservation_repository.js'
+import { AdonisSmsValidationRepository } from '../infrastructure/adonis_sms_validation_repository.js'
 import { AdonisStudentDetailsRepository } from '../infrastructure/adonis_student_details_repository.js'
 import { AdonisStudentTaskActivityRepository } from '../infrastructure/adonis_student_task_activity_repository.js'
 import { AdonisSubscriptionRepository } from '../infrastructure/adonis_subscription_repository.js'
 import TokenBalanceRepository from '../infrastructure/adonis_token_balance.repository.js'
 import { AdonisUserRepository } from '../infrastructure/adonis_user_repository.js'
 import { StripePaymentGateway } from '../infrastructure/stripe_gateway.js'
+import { TwilioSmsProvider } from '../infrastructure/twilio_sms_provider_gateway.js'
 import { EmailService } from '../services/email_service.js'
 import { EmailValidationService } from '../services/email_validation_service.js'
 import { loggingService } from '../services/logging_service.js'
 import { NextActivityService } from '../services/next_activity_service.js'
+import { SmsService } from '../services/sms_service.js'
+import { SmsValidationService } from '../services/sms_validation_service.js'
 import { findParentSubscriptionDetails } from '../services/user/parent/find_parend_subscription_details.js'
 import type { ChapterDto } from './chapter.ts'
 import type { UserDto } from './user_auth_router.js'
@@ -172,6 +177,64 @@ const createChild = async ({ input, parentId }: { input: AddChildSchema; parentI
   }
 
   return child
+}
+
+const createSmsService = () => {
+  const twilioAccountSid = env.get('TWILIO_ACCOUNT_SID')
+  const twilioAuthToken = env.get('TWILIO_AUTH_TOKEN')
+  const twilioPhoneNumber = env.get('TWILIO_PHONE_NUMBER')
+  const twilioMessagingServiceSid = env.get('TWILIO_MESSAGING_SERVICE_SID')
+
+  loggingService.info("Vérification des variables d'environnement Twilio", {
+    action: 'create_sms_service_env_check',
+    hasAccountSid: !!twilioAccountSid,
+    hasAuthToken: !!twilioAuthToken,
+    hasPhoneNumber: !!twilioPhoneNumber,
+    hasMessagingServiceSid: !!twilioMessagingServiceSid,
+  })
+
+  if (!twilioAccountSid || !twilioAuthToken) {
+    loggingService.error("Variables d'environnement Twilio manquantes", {
+      action: 'create_sms_service_env_missing',
+      hasAccountSid: !!twilioAccountSid,
+      hasAuthToken: !!twilioAuthToken,
+      hasPhoneNumber: !!twilioPhoneNumber,
+      hasMessagingServiceSid: !!twilioMessagingServiceSid,
+    })
+    throw new TRPCError({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: "Configuration SMS non disponible - variables d'environnement Twilio manquantes",
+    })
+  }
+
+  if (!twilioMessagingServiceSid && !twilioPhoneNumber) {
+    loggingService.error("Aucune méthode d'envoi SMS configurée", {
+      action: 'create_sms_service_no_sender',
+      hasPhoneNumber: !!twilioPhoneNumber,
+      hasMessagingServiceSid: !!twilioMessagingServiceSid,
+    })
+    throw new TRPCError({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: "Configuration SMS non disponible - aucune méthode d'envoi configurée",
+    })
+  }
+
+  const smsValidationRepository = new AdonisSmsValidationRepository()
+  const smsValidationService = new SmsValidationService(smsValidationRepository)
+  const twilioClient = twilio(twilioAccountSid, twilioAuthToken)
+  const twilioSmsProvider = new TwilioSmsProvider(
+    twilioClient,
+    twilioPhoneNumber,
+    twilioMessagingServiceSid
+  )
+
+  loggingService.info('Service SMS créé avec succès', {
+    action: 'create_sms_service_success',
+    phoneNumber: twilioPhoneNumber,
+    messagingServiceSid: twilioMessagingServiceSid,
+  })
+
+  return new SmsService(twilioSmsProvider, smsValidationService)
 }
 
 const createEmailService = () => {
@@ -1087,12 +1150,12 @@ export const userRouter = {
         user.email = input.email
         user.address = input.address
           ? {
-              streetNumber: input.address.streetNumber,
-              street: input.address.street,
-              postalCode: input.address.postalCode,
-              city: input.address.city,
-              country: input.address.country,
-            }
+            streetNumber: input.address.streetNumber,
+            street: input.address.street,
+            postalCode: input.address.postalCode,
+            city: input.address.city,
+            country: input.address.country,
+          }
           : null
         user.role = input.role
 
@@ -1166,58 +1229,58 @@ export const userRouter = {
 
       try {
         // Empêcher l'utilisation d'un numéro déjà attribué à un autre utilisateur
-        // const existingWithPhone = await User.query()
-        //   .where('phoneNumber', input.phoneNumber)
-        //   .whereNot('id', ctx.genericAuth.id)
-        //   .first()
-        // if (existingWithPhone) {
-        //   loggingService.warn('Tentative d’utilisation d’un numéro déjà utilisé', {
-        //     action: 'send_phone_verification_code_phone_already_used',
-        //     userId: ctx.genericAuth.id,
-        //     phoneNumber: input.phoneNumber,
-        //   })
-        //   throw new TRPCError({
-        //     code: 'BAD_REQUEST',
-        //     message: 'Ce numéro est déjà utilisé par un autre compte.',
-        //   })
-        // }
-        //
-        // loggingService.info('Création du service SMS', {
-        //   action: 'send_phone_verification_code_service_creation',
-        //   userId: ctx.genericAuth.id,
-        //   phoneNumber: input.phoneNumber,
-        // })
-        //
-        // const smsService = createSmsService()
-        //
-        // loggingService.info('Service SMS créé, appel de sendValidationCode', {
-        //   action: 'send_phone_verification_code_service_ready',
-        //   userId: ctx.genericAuth.id,
-        //   phoneNumber: input.phoneNumber,
-        // })
-        //
-        // const result = await smsService.sendValidationCode(input.phoneNumber, ctx.genericAuth.id)
-        //
-        // if (!result.success) {
-        //   loggingService.warn("Échec de l'envoi du code de vérification SMS", {
-        //     action: 'send_phone_verification_code_failed',
-        //     userId: ctx.genericAuth.id,
-        //     phoneNumber: input.phoneNumber,
-        //     error: result.error,
-        //   })
-        //
-        //   throw new TRPCError({
-        //     code: 'BAD_REQUEST',
-        //     message: result.error ?? "Erreur lors de l'envoi du code de vérification",
-        //   })
-        // }
-        //
-        // loggingService.info('Code de vérification SMS envoyé avec succès', {
-        //   action: 'send_phone_verification_code_success',
-        //   userId: ctx.genericAuth.id,
-        //   phoneNumber: input.phoneNumber,
-        //   messageId: result.messageId,
-        // })
+        const existingWithPhone = await User.query()
+          .where('phoneNumber', input.phoneNumber)
+          .whereNot('id', ctx.genericAuth.id)
+          .first()
+        if (existingWithPhone) {
+          loggingService.warn('Tentative d’utilisation d’un numéro déjà utilisé', {
+            action: 'send_phone_verification_code_phone_already_used',
+            userId: ctx.genericAuth.id,
+            phoneNumber: input.phoneNumber,
+          })
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Ce numéro est déjà utilisé par un autre compte.',
+          })
+        }
+
+        loggingService.info('Création du service SMS', {
+          action: 'send_phone_verification_code_service_creation',
+          userId: ctx.genericAuth.id,
+          phoneNumber: input.phoneNumber,
+        })
+
+        const smsService = createSmsService()
+
+        loggingService.info('Service SMS créé, appel de sendValidationCode', {
+          action: 'send_phone_verification_code_service_ready',
+          userId: ctx.genericAuth.id,
+          phoneNumber: input.phoneNumber,
+        })
+
+        const result = await smsService.sendValidationCode(input.phoneNumber, ctx.genericAuth.id)
+
+        if (!result.success) {
+          loggingService.warn("Échec de l'envoi du code de vérification SMS", {
+            action: 'send_phone_verification_code_failed',
+            userId: ctx.genericAuth.id,
+            phoneNumber: input.phoneNumber,
+            error: result.error,
+          })
+
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: result.error ?? "Erreur lors de l'envoi du code de vérification",
+          })
+        }
+
+        loggingService.info('Code de vérification SMS envoyé avec succès', {
+          action: 'send_phone_verification_code_success',
+          userId: ctx.genericAuth.id,
+          phoneNumber: input.phoneNumber,
+          messageId: result.messageId,
+        })
 
         return { success: true }
       } catch (error) {
@@ -1248,63 +1311,63 @@ export const userRouter = {
       })
 
       try {
-        // const smsService = createSmsService()
-        // const result = await smsService.validateCode(input.phoneNumber, input.code)
-        //
-        // if (!result.isValid) {
-        //   loggingService.warn('Code de vérification SMS invalide', {
-        //     action: 'verify_phone_code_failed',
-        //     userId: ctx.genericAuth.id,
-        //     phoneNumber: input.phoneNumber,
-        //     attempts: result.attempts,
-        //     error: result.error,
-        //   })
-        //
-        //   throw new TRPCError({
-        //     code: 'BAD_REQUEST',
-        //     message: result.error ?? 'Code de vérification invalide',
-        //   })
-        // }
-        //
-        // // Double-check de l'unicité avant mise à jour pour éviter une condition de course
-        // const existingWithPhone = await User.query()
-        //   .where('phoneNumber', input.phoneNumber)
-        //   .whereNot('id', ctx.genericAuth.id)
-        //   .first()
-        // if (existingWithPhone) {
-        //   loggingService.warn('Numéro déjà utilisé au moment de la vérification', {
-        //     action: 'verify_phone_code_phone_already_used',
-        //     userId: ctx.genericAuth.id,
-        //     phoneNumber: input.phoneNumber,
-        //   })
-        //   throw new TRPCError({
-        //     code: 'BAD_REQUEST',
-        //     message: 'Ce numéro est déjà utilisé par un autre compte.',
-        //   })
-        // }
-        //
-        // // Mettre à jour le numéro de téléphone de l'utilisateur
-        // const user = await User.findBy('id', ctx.genericAuth.id)
-        // if (user) {
-        //   user.phoneNumber = input.phoneNumber
-        //   await user.save()
-        //
-        //   loggingService.info('Numéro de téléphone vérifié et mis à jour avec succès', {
-        //     action: 'verify_phone_code_success',
-        //     userId: ctx.genericAuth.id,
-        //     phoneNumber: input.phoneNumber,
-        //     attempts: result.attempts,
-        //   })
-        // } else {
-        //   loggingService.warn(
-        //     'Utilisateur non trouvé lors de la mise à jour du numéro de téléphone',
-        //     {
-        //       action: 'verify_phone_code_user_not_found',
-        //       userId: ctx.genericAuth.id,
-        //       phoneNumber: input.phoneNumber,
-        //     }
-        //   )
-        // }
+        const smsService = createSmsService()
+        const result = await smsService.validateCode(input.phoneNumber, input.code)
+
+        if (!result.isValid) {
+          loggingService.warn('Code de vérification SMS invalide', {
+            action: 'verify_phone_code_failed',
+            userId: ctx.genericAuth.id,
+            phoneNumber: input.phoneNumber,
+            attempts: result.attempts,
+            error: result.error,
+          })
+
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: result.error ?? 'Code de vérification invalide',
+          })
+        }
+
+        // Double-check de l'unicité avant mise à jour pour éviter une condition de course
+        const existingWithPhone = await User.query()
+          .where('phoneNumber', input.phoneNumber)
+          .whereNot('id', ctx.genericAuth.id)
+          .first()
+        if (existingWithPhone) {
+          loggingService.warn('Numéro déjà utilisé au moment de la vérification', {
+            action: 'verify_phone_code_phone_already_used',
+            userId: ctx.genericAuth.id,
+            phoneNumber: input.phoneNumber,
+          })
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Ce numéro est déjà utilisé par un autre compte.',
+          })
+        }
+
+        // Mettre à jour le numéro de téléphone de l'utilisateur
+        const user = await User.findBy('id', ctx.genericAuth.id)
+        if (user) {
+          user.phoneNumber = input.phoneNumber
+          await user.save()
+
+          loggingService.info('Numéro de téléphone vérifié et mis à jour avec succès', {
+            action: 'verify_phone_code_success',
+            userId: ctx.genericAuth.id,
+            phoneNumber: input.phoneNumber,
+            attempts: result.attempts,
+          })
+        } else {
+          loggingService.warn(
+            'Utilisateur non trouvé lors de la mise à jour du numéro de téléphone',
+            {
+              action: 'verify_phone_code_user_not_found',
+              userId: ctx.genericAuth.id,
+              phoneNumber: input.phoneNumber,
+            }
+          )
+        }
 
         return { success: true }
       } catch (error) {

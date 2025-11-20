@@ -189,7 +189,9 @@ export default function StudentHeader() {
                   <p className="mb-3 text-center text-sm text-gray-600">3 cours particuliers</p>
                   <p className="mb-4 text-center text-2xl font-bold text-gray-900">30,00€</p>
                   {clientSecret ? (
+                    <Elements stripe={stripePromise} options={{ clientSecret }}>
                       <PaymentForm returnUrl={window.location.href} />
+                    </Elements>
                   ) : (
                     <Button
                       className="w-full rounded-md bg-blue-600 font-semibold text-white hover:bg-blue-700"

@@ -45,23 +45,18 @@ export const moduleRouter = router({
   getAll: authProcedure.meta({ guards: ['admin', 'user'] }).query<ModuleDto[]>(async ({ ctx }) => {
     void ctx
     const modules = await Module.query().preload('chapter')
-    try {
-      const modulesforfrontend = modules.map((module) => ({
-        id: module.id,
-        name: module.name,
-        grade: module.grade,
-        subject: module.subject,
-        chapter: {
-          id: module.chapter.id,
-          name: module.chapter.name,
-          order: module.chapter.order,
-        },
-      }))
-      return modulesforfrontend
-    } catch (error: unknown) {
-      console.log(error)
-      throw error
-    }
+    const modulesforfrontend = modules.map((module) => ({
+      id: module.id,
+      name: module.name,
+      grade: module.grade,
+      subject: module.subject,
+      chapter: {
+        id: module.chapter.id,
+        name: module.chapter.name,
+        order: module.chapter.order,
+      },
+    }))
+    return modulesforfrontend
   }),
 
   // Distinct chapters for a given grade and subject (based on existing modules)

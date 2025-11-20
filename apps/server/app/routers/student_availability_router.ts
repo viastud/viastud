@@ -1651,115 +1651,116 @@ export const studentAvailabilitiesRouter = router({
           )
 
           try {
-            // const notificationService = createReservationNotificationService()
-            // if (notificationService && user.phoneNumber) {
-            const reservationsDetails = []
-            for (const createdReservation of createdReservations) {
-              try {
-                const reservation = await Reservation.query()
-                  .preload('slot', (slotQuery) => {
-                    void slotQuery
-                      .preload('sheet')
-                      .preload('professorAvailabilities', (profQuery) => {
-                        void profQuery.preload('professor')
-                      })
-                  })
-                  .where('id', createdReservation.reservationId)
-                  .firstOrFail()
+            const notificationService = createReservationNotificationService()
+            if (notificationService && user.phoneNumber) {
+              const reservationsDetails = []
+              for (const createdReservation of createdReservations) {
+                try {
+                  const reservation = await Reservation.query()
+                    .preload('slot', (slotQuery) => {
+                      void slotQuery
+                        .preload('sheet')
+                        .preload('professorAvailabilities', (profQuery) => {
+                          void profQuery.preload('professor')
+                        })
+                    })
+                    .where('id', createdReservation.reservationId)
+                    .firstOrFail()
 
-                const reservationDate = reservation.slot.weekStart
-                  .plus({ days: reservation.slot.dayOfWeek })
-                  .set({
-                    hour: reservation.slot.hour,
-                    minute: reservation.slot.minute,
-                    second: 0,
-                    millisecond: 0,
-                  })
+                  const reservationDate = reservation.slot.weekStart
+                    .plus({ days: reservation.slot.dayOfWeek })
+                    .set({
+                      hour: reservation.slot.hour,
+                      minute: reservation.slot.minute,
+                      second: 0,
+                      millisecond: 0,
+                    })
 
-                const reservationDetails = {
-                  id: reservation.id,
+                  const reservationDetails = {
+                    id: reservation.id,
+                    studentName: user.firstName,
+                    subject: reservation.slot.sheet?.name || 'Cours',
+                    professorName:
+                      reservation.slot.professorAvailabilities?.professor?.firstName ??
+                      'Professeur',
+                    date: reservationDate.toJSDate(),
+                    duration: 60,
+                  }
+
+                  reservationsDetails.push(reservationDetails)
+                } catch (error) {
+                  loggingService.error(
+                    "Erreur lors du chargement d'une réservation pour SMS groupé",
+                    {
+                      action: 'createMultipleReservations_load_reservation_error',
+                      userId: user.id as string,
+                      reservationId: createdReservation.reservationId,
+                      slotId: createdReservation.slotId,
+                      error: error instanceof Error ? error.message : String(error),
+                    },
+                    'business'
+                  )
+                }
+              }
+
+              // Envoyer un SMS groupé si on a des réservations
+              if (reservationsDetails.length > 0) {
+                const groupedReservations = {
+                  reservations: reservationsDetails,
                   studentName: user.firstName,
-                  subject: reservation.slot.sheet?.name || 'Cours',
-                  professorName:
-                    reservation.slot.professorAvailabilities?.professor?.firstName ?? 'Professeur',
-                  date: reservationDate.toJSDate(),
-                  duration: 60,
+                  phoneNumber: user.phoneNumber,
                 }
 
-                reservationsDetails.push(reservationDetails)
-              } catch (error) {
-                loggingService.error(
-                  "Erreur lors du chargement d'une réservation pour SMS groupé",
+                loggingService.info(
+                  'Envoi SMS de confirmation groupé pour réservations multiples',
                   {
-                    action: 'createMultipleReservations_load_reservation_error',
+                    action: 'createMultipleReservations_grouped_sms_start',
                     userId: user.id as string,
-                    reservationId: createdReservation.reservationId,
-                    slotId: createdReservation.slotId,
-                    error: error instanceof Error ? error.message : String(error),
+                    phoneNumber: user.phoneNumber,
+                    reservationsCount: reservationsDetails.length,
                   },
                   'business'
                 )
+
+                const smsResult =
+                  await notificationService.sendGroupedConfirmationNotification(groupedReservations)
+
+                if (smsResult.success) {
+                  loggingService.info(
+                    'SMS de confirmation groupé envoyé avec succès',
+                    {
+                      action: 'createMultipleReservations_grouped_sms_success',
+                      userId: user.id as string,
+                      messageId: smsResult.messageId,
+                      reservationsCount: reservationsDetails.length,
+                    },
+                    'business'
+                  )
+                } else {
+                  loggingService.error(
+                    'Échec envoi SMS de confirmation groupé',
+                    {
+                      action: 'createMultipleReservations_grouped_sms_error',
+                      userId: user.id as string,
+                      error: smsResult.error,
+                      reservationsCount: reservationsDetails.length,
+                    },
+                    'business'
+                  )
+                }
               }
-            }
-
-            // Envoyer un SMS groupé si on a des réservations
-            if (reservationsDetails.length > 0) {
-              // const groupedReservations = {
-              //   reservations: reservationsDetails,
-              //   studentName: user.firstName,
-              //   phoneNumber: user.phoneNumber,
-              // }
-
-              loggingService.info(
-                'Envoi SMS de confirmation groupé pour réservations multiples',
+            } else {
+              loggingService.warn(
+                'Service de notification SMS non disponible (multi)',
                 {
-                  action: 'createMultipleReservations_grouped_sms_start',
+                  action: 'createMultipleReservations_sms_service_unavailable',
                   userId: user.id as string,
                   phoneNumber: user.phoneNumber,
-                  reservationsCount: reservationsDetails.length,
+                  reservationsCount: createdReservations.length,
                 },
                 'business'
               )
-
-              // const smsResult =
-              //   await notificationService.sendGroupedConfirmationNotification(groupedReservations)
-
-              // if (smsResult.success) {
-              //   loggingService.info(
-              //     'SMS de confirmation groupé envoyé avec succès',
-              //     {
-              //       action: 'createMultipleReservations_grouped_sms_success',
-              //       userId: user.id as string,
-              //       messageId: smsResult.messageId,
-              //       reservationsCount: reservationsDetails.length,
-              //     },
-              //     'business'
-              //   )
-              // } else {
-              //   loggingService.error(
-              //     'Échec envoi SMS de confirmation groupé',
-              //     {
-              //       action: 'createMultipleReservations_grouped_sms_error',
-              //       userId: user.id as string,
-              //       error: smsResult.error,
-              //       reservationsCount: reservationsDetails.length,
-              //     },
-              //     'business'
-              //   )
-              // }
             }
-            // } else {
-            //   loggingService.warn(
-            //     'Service de notification SMS non disponible (multi)',
-            //     {
-            //       action: 'createMultipleReservations_sms_service_unavailable',
-            //       userId: user.id as string,
-            //       phoneNumber: user.phoneNumber,
-            //       reservationsCount: createdReservations.length,
-            //     },
-            //     'business'
-            //   )
-            // }
           } catch (smsError) {
             loggingService.error(
               "Erreur générale lors de l'envoi des SMS (multi)",
