@@ -1,0 +1,29 @@
+{
+  "name": "@viastud/utils",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@tsconfig/node20": "^20.1.4"
+  },
+  "dependencies": {
+    "myst-frontmatter": "^1.7.5",
+    "react-phone-number-input": "^3.4.11",
+    "zod": "catalog:"
+  },
+  "imports": {
+    "#enums/*": "./dist/enums/*.js",
+    "#validators/*": "./dist/validators/*.js",
+    "#constants/*": "./dist/constants/*.js"
+  }
+}

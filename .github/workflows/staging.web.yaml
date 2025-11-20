@@ -1,0 +1,64 @@
+name: Deploy Web (staging) 🚀
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - '.github/workflows/staging.web.yaml'
+      - './package.json'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache turbo build setup
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build:staging --filter=@viastud/web
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          RELEASE_NAME: ${{ github.sha }}
+
+      - name: Create robots.txt for staging
+        run: |
+          echo -e "User-agent: *\nDisallow: /" > ./dist/robots.txt
+        working-directory: ./apps/web
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-3
+
+      - name: Deploy
+        run: aws s3 sync ./dist s3://via-stud-web-staging/ --delete
+        working-directory: ./apps/web
+
+      - name: Invalidate dashboard cloudfront
+        run: aws cloudfront create-invalidation --distribution-id E2FHZJ1DKRPX8M --paths "/*"

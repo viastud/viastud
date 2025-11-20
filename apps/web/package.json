@@ -1,0 +1,52 @@
+{
+  "name": "@viastud/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --mode staging",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "catalog:",
+    "@sentry/react": "^8.47.0",
+    "@sentry/vite-plugin": "^2.22.7",
+    "@stripe/react-stripe-js": "^3.1.1",
+    "@stripe/stripe-js": "^5.4.0",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@trpc/client": "catalog:",
+    "@trpc/react-query": "catalog:",
+    "@trpc/server": "catalog:",
+    "@viastud/server": "workspace:*",
+    "@viastud/ui": "workspace:*",
+    "@viastud/utils": "workspace:*",
+    "clsx": "^2.1.1",
+    "dayjs": "^1.11.13",
+    "immer": "^10.1.1",
+    "lucide-react": "^0.469.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-hook-form": "catalog:",
+    "roughjs": "^4.6.6",
+    "slugify": "^1.6.6",
+    "tailwind-merge": "^3.3.0",
+    "ts-pattern": "^5.6.0",
+    "uuid": "^11.0.4",
+    "zod": "catalog:",
+    "zustand": "5.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/router-devtools": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
+    "@tsconfig/vite-react": "^3.4.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "catalog:",
+    "vite": "^6.0.7"
+  }
+}

@@ -1,0 +1,11 @@
+services:
+  database:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./apps/server/.env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+volumes:
+  postgres-data:

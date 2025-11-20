@@ -1,0 +1,22 @@
+{
+  "extends": "@tsconfig/vite-react/tsconfig.json",
+  "include": [
+    "src",
+    "../../packages/ui/src/components/ui/availabilities",
+    "../../packages/ui/src/components/shared/scroll-to-top.tsx"
+  ],
+  "compilerOptions": {
+    "outDir": "dist",
+    "experimentalDecorators": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist"],
+  "references": [
+    {
+      "path": "../../packages/utils"
+    }
+  ]
+}

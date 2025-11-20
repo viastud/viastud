@@ -1,0 +1,103 @@
+@import '@myst-theme/styles';
+@import 'tailwindcss';
+@plugin "@tailwindcss/typography";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../packages/ui/node_modules/@myst-theme/frontmatter/dist/**/*.{js,ts,jsx,tsx}";
+@source "../../../packages/ui/node_modules/myst-to-react/dist/**/*.{js,ts,jsx,tsx}";
+
+@config "../tailwind.config.ts";
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  img {
+    @apply inline-block;
+  }
+
+  body {
+    @apply font-poppins;
+  }
+
+  html {
+    @apply overflow-x-hidden;
+  }
+
+  h1 {
+    @apply font-epilogue;
+  }
+
+  input[type='checkbox'] {
+    @apply flex h-4 w-4 appearance-none items-center justify-center rounded-md border-2 border-blue-500;
+  }
+
+  input[type='checkbox']:checked {
+    @apply border-blue-500 bg-blue-500;
+  }
+
+  input[type='checkbox']:checked::after {
+    content: '✓';
+    @apply flex items-center justify-center text-sm font-bold text-yellow-400;
+  }
+
+  .download .shadow-custom {
+    @apply border border-gray-100;
+  }
+
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role='button']:disabled {
+    cursor: default;
+  }
+}
+
+@layer components {
+  .video-cover video {
+    position: absolute;
+    object-fit: cover;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility blue-gradiant {
+  background-color: #3347ff;
+  background-image: linear-gradient(to bottom, #3347ff, #3b01e0);
+
+  &:hover {
+    background-color: #2f3fe8;
+    background-image: linear-gradient(to bottom, #2f3fe8, #2a4dfe);
+  }
+}
+
+@utility bg-checkboxYellow {
+  background-color: #fde047;
+}
+
+@utility bg-checkboxBlue {
+  background-color: #3b82f6;
+}
+
+@utility clipped {
+  clip-path: inset(0 100% 0 0);
+}

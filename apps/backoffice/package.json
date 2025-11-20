@@ -1,0 +1,49 @@
+{
+  "name": "@viastud/backoffice",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --mode ${MODE}",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "catalog:",
+    "@sentry/react": "^8.47.0",
+    "@sentry/vite-plugin": "^2.22.7",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-table": "^8.20.6",
+    "@tanstack/router-plugin": "catalog:",
+    "@trpc/client": "catalog:",
+    "@trpc/react-query": "catalog:",
+    "@trpc/server": "catalog:",
+    "@viastud/server": "workspace:*",
+    "@viastud/ui": "workspace:*",
+    "@viastud/utils": "workspace:*",
+    "dayjs": "^1.11.13",
+    "lucide-react": "^0.469.0",
+    "posthog-js": "^1.260.2",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-hook-form": "catalog:",
+    "react-phone-number-input": "^3.4.11",
+    "ts-pattern": "^5.6.0",
+    "zod": "catalog:",
+    "zustand": "5.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/router-devtools": "catalog:",
+    "@tanstack/router-plugin": "^1.58.4",
+    "@tsconfig/vite-react": "^3.4.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "catalog:",
+    "vite": "^6.0.7"
+  }
+}

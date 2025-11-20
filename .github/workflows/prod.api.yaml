@@ -1,0 +1,95 @@
+name: Deploy API (production) 🚀
+on:
+  push:
+    branches:
+      - production
+    paths:
+      - 'apps/server/**'
+      - 'packages/utils/**'
+      - '.github/workflows/prod.api.yaml'
+      - './package.json'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache turbo build setup
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install Transcrypt
+        run: git clone https://github.com/elasticdog/transcrypt.git
+
+      - name: Decode secrets
+        run: transcrypt/transcrypt -c aes-256-cbc -p '${{ secrets.TRANSCRYPT_KEY }}' -y
+
+      - name: replace .env with .env.production
+        run: cat .env.production >> .env
+        working-directory: ./apps/server
+
+      - name: add sentry release to .env
+        run: echo "SENTRY_RELEASE=${{ github.sha }}" >> .env
+        working-directory: ./apps/server
+
+      - name: install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: build
+        run: pnpm build:prod --filter=@viastud/server
+
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: viastud
+          SENTRY_PROJECT: server
+        with:
+          environment: production
+          sourcemaps: ./apps/server/build
+          ignore_missing: true
+
+      - name: apply migrations
+        run: node ace migration:run --force
+        working-directory: ./apps/server
+
+      - name: Bundle App
+        run: pnpm --filter=@viastud/server deploy --prod bundle
+
+      - name: Zip build
+        run: mv build/* . && zip --symlinks -qq -r ./deploy.zip . -x build
+        working-directory: ./bundle
+
+      - name: Deploy to production instance
+        uses: easingthemes/ssh-deploy@main
+        env:
+          NODE_ENV: production
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_PROD_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.EC2_PROD_HOST_DNS }}
+          REMOTE_USER: ec2-user
+          TARGET: '/home/ec2-user'
+          SOURCE: './bundle/deploy.zip'
+          SCRIPT_AFTER: |
+            rm -rf server
+            unzip -qq -o ./deploy.zip -d server
+            rm ./deploy.zip
+            cd server
+            pm2 start ./ecosystem.config.cjs
+            pm2 save
