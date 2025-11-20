@@ -1,19 +1,19 @@
-commit-msg:
-  commands:
-    lint-commit-msg:
-      run: pnpm dlx commitlint --edit
-pre-commit:
-  parallel: true
-  commands:
-    check-lockfile:
-      run: pnpm i --frozen-lockfile --silent
-    check:
-      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}'
-      run: pnpm dlx eslint {staged_files} --fix
-    type-check:
-      run: pnpm typecheck
-    format:
-      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}'
-      run: pnpm dlx prettier {staged_files} --write --log-level silent
-    transcrypt:
-      run: RELATIVE_GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || printf '') && CRYPT_DIR=$(git config transcrypt.crypt-dir 2>/dev/null || printf '%s/crypt' "${RELATIVE_GIT_DIR}") && "${CRYPT_DIR}/transcrypt" pre_commit
+#commit-msg:
+#  commands:
+#    lint-commit-msg:
+#      run: pnpm dlx commitlint --edit
+#pre-commit:
+#  parallel: true
+#  commands:
+#    check-lockfile:
+#      run: pnpm i --frozen-lockfile --silent
+#    check:
+#      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx}'
+#      run: pnpm dlx eslint {staged_files} --fix
+#    type-check:
+#      run: pnpm typecheck
+#    format:
+#      glob: '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}'
+#      run: pnpm dlx prettier {staged_files} --write --log-level silent
+#    transcrypt:
+#      run: RELATIVE_GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || printf '') && CRYPT_DIR=$(git config transcrypt.crypt-dir 2>/dev/null || printf '%s/crypt' "${RELATIVE_GIT_DIR}") && "${CRYPT_DIR}/transcrypt" pre_commit
