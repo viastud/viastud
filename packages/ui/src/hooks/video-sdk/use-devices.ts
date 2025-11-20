@@ -171,6 +171,10 @@ export function useDevices(setVideoStream: (videoStream: MediaStream | undefined
             setVideoStream(stream)
           }
         }
+      } else {
+        if (videoPlayerRef.current) {
+          videoPlayerRef.current.srcObject = null
+        }
       }
       // if (videoTrackRef.current) {
       //   videoTrackRef.current.stop()
