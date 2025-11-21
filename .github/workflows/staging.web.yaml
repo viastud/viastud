@@ -1,5 +1,7 @@
 name: Deploy Web (staging) 🚀
 on:
+  workflow_dispatch:
+
   push:
     branches:
       - staging
@@ -7,7 +9,7 @@ on:
       - 'apps/web/**'
       - 'packages/**'
       - '.github/workflows/staging.web.yaml'
-      - './package.json'
+      - 'package.json'
 
 jobs:
   deploy:
