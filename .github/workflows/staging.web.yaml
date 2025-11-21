@@ -58,9 +58,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-3
 
-#      - name: Deploy
-#        run: aws s3 sync ./dist s3://via-stud-web-staging/ --delete
-#        working-directory: ./apps/web
-#
-#      - name: Invalidate dashboard cloudfront
-#        run: aws cloudfront create-invalidation --distribution-id E2FHZJ1DKRPX8M --paths "/*"
+      - name: Deploy
+        run: aws s3 sync ./dist s3://via-stud-web-staging/ --delete
+        working-directory: ./apps/web
+
+      - name: Invalidate dashboard cloudfront
+        run: aws cloudfront create-invalidation --distribution-id E2FHZJ1DKRPX8M --paths "/*"
